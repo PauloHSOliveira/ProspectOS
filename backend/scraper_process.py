@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 GRACE_PERIOD_SECONDS = 10
 TAIL_LIMIT = 50
+IS_WINDOWS = sys.platform == "win32"
 
 
 class LineCategory(Enum):
@@ -179,6 +180,10 @@ class ScraperProcessRunner:
 
         cmd = [str(executable), *args]
 
+        creationflags = 0
+        if IS_WINDOWS:
+            creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
+
         process = subprocess.Popen(
             cmd,
             cwd=str(cwd),
@@ -189,6 +194,7 @@ class ScraperProcessRunner:
             encoding="utf-8",
             errors="replace",
             bufsize=1,
+            creationflags=creationflags,
         )
 
         pipes_open = 0
@@ -219,7 +225,7 @@ class ScraperProcessRunner:
                 remaining = _deadline_remaining(deadline)
                 if remaining is not None and remaining <= 0:
                     terminated = True
-                    process.terminate()
+                    _kill_process_tree(process)
                     _wait_with_grace(process)
                     if process.poll() is None:
                         killed = True
@@ -229,7 +235,7 @@ class ScraperProcessRunner:
 
                 if cancel_event and cancel_event.is_set():
                     terminated = True
-                    process.terminate()
+                    _kill_process_tree(process)
                     _wait_with_grace(process)
                     if process.poll() is None:
                         killed = True
@@ -271,7 +277,7 @@ class ScraperProcessRunner:
         finally:
             if process.poll() is None:
                 terminated = True
-                process.terminate()
+                _kill_process_tree(process)
                 _wait_with_grace(process)
                 if process.poll() is None:
                     killed = True
@@ -301,6 +307,19 @@ def _deadline_remaining(deadline: float | None) -> float | None:
     if deadline is None:
         return None
     return deadline - time.monotonic()
+
+
+def _kill_process_tree(process: subprocess.Popen):
+    if not IS_WINDOWS:
+        process.terminate()
+        return
+    try:
+        subprocess.run(
+            ["taskkill", "/T", "/F", "/PID", str(process.pid)],
+            timeout=5, capture_output=True,
+        )
+    except Exception:
+        process.terminate()
 
 
 def _wait_with_grace(process: subprocess.Popen, grace: float = GRACE_PERIOD_SECONDS):

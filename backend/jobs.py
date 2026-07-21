@@ -331,7 +331,7 @@ def _executar_scraper(arquivo_bruto, ambiente, flags_extras=(), scraper_path_ove
     """Roda o binário do scraper uma vez, com progresso ao vivo.
     Retorna None em sucesso, ou a mensagem de erro amigável em falha."""
     target = runtime_targets.current_target()
-    use_new_runner = target == "darwin-arm64"
+    use_new_runner = target in ("darwin-arm64", "win32-x64")
 
     if scraper_path_override:
         scraper_path = scraper_path_override

@@ -12,11 +12,13 @@
 5. `aguardarReadiness()` — HTTP GET na porta até 200 OK ou timeout 15s
 6. `criarJanela()` — `BrowserWindow` carregando `http://127.0.0.1:PORTA`
 
-**Lifecycle macOS:**
-- `window-all-closed` não encerra o app (comportamento macOS padrão)
-- `activate` recria janela se backend ainda está vivo
-- `before-quit` envia SIGTERM com grace period 10s, depois SIGKILL
-- `will-quit` garante SIGKILL final
+**Lifecycle:**
+- **macOS**: `window-all-closed` não encerra o app (padrão macOS)
+  - `activate` recria janela se backend ainda está vivo
+  - `before-quit` envia SIGTERM com grace period 10s, depois SIGKILL
+- **Windows**: `window-all-closed` encerra o app
+  - `before-quit` usa `taskkill /T /F /PID` para encerrar a árvore de processos
+  - `will-quit` executa `taskkill /T /F` como fallback
 
 **Env vars passadas ao backend:**
 
@@ -135,9 +137,18 @@ cache/playwright/
 - `get_diagnostics()` — relatório completo para debug
 
 **Limitações conhecidas:**
-- Só implementado para `darwin-arm64` (spec só tem esse runtime)
 - Cache do driver 1.60.0 no CDN da Microsoft está quebrado (404)
   - Solução: montagem manual via npm registry + nodejs.org (validada no Gate 1C)
+
+**Targets suportados:**
+- `darwin-arm64` — Apple Silicon (M1/M2/M3/M4)
+- `win32-x64` — Windows x64 (10/11)
+- `linux-x64` — spec presente, implementação do runtime pendente
+
+**Diferenças por plataforma:**
+- Windows: usa `node.exe` em vez de `node` (gerenciado em `manager.py` via `self._node_binary`)
+- Windows: suporte a `CREATE_NEW_PROCESS_GROUP` e `taskkill /T` para encerramento de árvore
+- Extração: Windows usa `.zip` (Node.js para win32-x64), demais usam `.tar.gz`
 
 ### Scraper Process Runner (scraper_process.py)
 

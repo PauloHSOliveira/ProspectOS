@@ -14,14 +14,15 @@ files:
 extraResources:
   - from: ../backend/dist/ProspectOS
     to: backend
-  - from: .runtime-resources/darwin-arm64/scraper
-    to: scraper
   - from: ../shared
     to: shared
 
 mac:
   category: public.app-category.business
   icon: build/icon.icns
+  extraResources:
+    - from: .runtime-resources/darwin-arm64/scraper
+      to: scraper
   target:
     - target: dir
       arch:
@@ -33,6 +34,9 @@ win:
   target:
     - nsis
   signAndEditExecutable: false
+  extraResources:
+    - from: ../scraper
+      to: scraper
 
 afterPack: ./afterPack.js
 
