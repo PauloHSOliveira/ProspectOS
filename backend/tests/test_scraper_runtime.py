@@ -121,12 +121,12 @@ class TestResolveAndPrepareRuntime:
         assert "PLAYWRIGHT_DRIVER_PATH" in env
         assert "PLAYWRIGHT_BROWSERS_PATH" in env
 
-    def test_non_darwin_returns_empty_env(self, monkeypatch, tmp_path):
+    def test_unsupported_target_returns_empty_env(self, monkeypatch, tmp_path):
         scraper = tmp_path / "google-maps-scraper"
         scraper.write_text("fake")
         scraper.chmod(0o755)
 
-        monkeypatch.setattr("runtime_targets.current_target", lambda: "win32-x64")
+        monkeypatch.setattr("runtime_targets.current_target", lambda: "linux-x64")
         monkeypatch.setattr("runtime_targets.resolve_scraper", lambda: scraper)
         monkeypatch.setattr("runtime_targets.validate_executable", lambda p, l: None)
 

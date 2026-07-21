@@ -283,6 +283,14 @@ async function limparBackend() {
     backendEncerradoDeProposito = true;
     if (!backend || backend.killed) return;
 
+    if (process.platform === "win32") {
+      try {
+        const { execSync } = require("child_process");
+        execSync(`taskkill /T /F /PID ${backend.pid}`, { timeout: 5000 });
+      } catch { }
+      return;
+    }
+
     return new Promise((resolve) => {
       const timeout = setTimeout(() => {
         try { backend.kill("SIGKILL"); } catch { }
@@ -332,7 +340,14 @@ app.on("before-quit", async (event) => {
 
 app.on("will-quit", () => {
   if (backend && !backend.killed) {
-    try { backend.kill("SIGKILL"); } catch { }
+    if (process.platform === "win32") {
+      try {
+        const { execSync } = require("child_process");
+        execSync(`taskkill /T /F /PID ${backend.pid}`, { timeout: 3000 });
+      } catch { }
+    } else {
+      try { backend.kill("SIGKILL"); } catch { }
+    }
   }
 });
 

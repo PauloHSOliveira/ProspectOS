@@ -101,6 +101,7 @@ class PlaywrightRuntimeManager:
         self._manifest = InstallationManifest(self._installation_dir)
         self._downloader = Downloader(self._downloads_dir, http_client=http_client)
         self._lock = InstallationLock(self._locks_dir, self._target, self._runtime_id)
+        self._node_binary = "node.exe" if self._target.startswith("win32") else "node"
 
     # ── public API ─────────────────────────────────────────────────────
 
@@ -201,7 +202,7 @@ class PlaywrightRuntimeManager:
         driver_dir = self._installation_dir / "driver"
         browsers_dir = self._installation_dir / "browsers"
 
-        node_path = driver_dir / "node"
+        node_path = driver_dir / self._node_binary
         cli_path = driver_dir / "package" / "cli.js"
 
         # Validate Node
@@ -455,7 +456,7 @@ class PlaywrightRuntimeManager:
         driver_dir = self._installation_dir / "driver"
         browsers_dir = self._installation_dir / "browsers"
 
-        node_path = driver_dir / "node"
+        node_path = driver_dir / self._node_binary
         if not validate_is_executable(node_path, "Node"):
             return False
 
@@ -513,8 +514,8 @@ class PlaywrightRuntimeManager:
         driver_dir = self._installation_dir / "driver"
         browsers_dir = self._installation_dir / "browsers"
 
-        if not (driver_dir / "node").exists():
-            missing.append("node")
+        if not (driver_dir / self._node_binary).exists():
+            missing.append(self._node_binary)
         if not (driver_dir / "package" / "cli.js").exists():
             missing.append("playwright-core/cli.js")
 
@@ -723,17 +724,21 @@ class PlaywrightRuntimeManager:
         else:
             node_bin = node_src
 
-        node_exe = node_bin / "node"
+        node_exe = node_bin / self._node_binary
         if not node_exe.exists():
-            alt = list(node_src.rglob("bin/node"))
+            alt = list(node_src.rglob(f"bin/{self._node_binary}"))
             if alt:
                 node_exe = alt[0]
             else:
-                raise NodeInvalidError(detail="node binario nao encontrado apos extracao")
+                alt = list(node_src.rglob("bin/node*"))
+                if alt:
+                    node_exe = alt[0]
+                else:
+                    raise NodeInvalidError(detail=f"node binario nao encontrado apos extracao (procurou por {self._node_binary})")
 
         driver_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(str(node_exe), str(driver_dir / "node"))
-        os.chmod(str(driver_dir / "node"), 0o755)
+        shutil.copy2(str(node_exe), str(driver_dir / self._node_binary))
+        os.chmod(str(driver_dir / self._node_binary), 0o755)
 
         package_dir = driver_dir / "package"
         package_dir.mkdir(parents=True, exist_ok=True)
@@ -758,7 +763,7 @@ class PlaywrightRuntimeManager:
         shutil.rmtree(driver_staging / "package_src", ignore_errors=True)
 
     def _validate_driver(self, driver_dir: Path):
-        node_path = driver_dir / "node"
+        node_path = driver_dir / self._node_binary
         if not validate_is_executable(node_path, "Node"):
             raise NodeInvalidError(detail="node nao encontrado ou sem permissao")
 

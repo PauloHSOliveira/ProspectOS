@@ -96,14 +96,14 @@ def resolve_and_prepare_runtime(
     scraper_path = runtime_targets.resolve_scraper()
     runtime_targets.validate_executable(scraper_path, "Scraper do Google Maps")
 
-    if target != "darwin-arm64":
+    try:
+        manager = PlaywrightRuntimeManager()
+    except UnsupportedTargetError:
         logger.info(
-            "target=%s nao usa runtime gerenciado, retornando ambiente vazio",
+            "target=%s nao possui spec de runtime gerenciado, retornando ambiente vazio",
             target,
         )
         return scraper_path, {}
-
-    manager = PlaywrightRuntimeManager()
 
     try:
         installation = manager.ensure_ready(
