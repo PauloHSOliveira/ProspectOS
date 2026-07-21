@@ -11,6 +11,7 @@ const {
   State,
   TerminationReason,
 } = require("./backend-process-supervisor.js");
+const logging = require("./logging.js");
 
 let janela = null;
 let backendEncerradoDeProposito = false;
@@ -21,11 +22,15 @@ let PROSPECTOS_RESOURCE_DIR = null;
 
 const backendSupervisor = new BackendProcessSupervisor();
 
+logging.logEvent("app.starting", `Platform: ${process.platform}, packaged: ${app.isPackaged}`);
+
 const primeiraInstancia = app.requestSingleInstanceLock();
 if (!primeiraInstancia) {
+  logging.logEvent("app.duplicate", "Second instance detected, quitting");
   app.quit();
 } else {
   app.on("second-instance", () => {
+    logging.logEvent("app.second-instance", "Focusing existing window");
     if (janela) {
       if (janela.isMinimized()) janela.restore();
       janela.focus();
@@ -135,15 +140,20 @@ function configurarAutoUpdate() {
 async function iniciar() {
   try {
     const pathsResolvidos = resolverPaths();
+    logging.setLogDir(PROSPECTOS_LOG_DIR);
+
+    logging.logEvent("backend.starting", "Resolving backend executable");
+
     const exe = resolverBackend();
 
     validateExecutable(exe, "Backend do ProspectOS");
 
-    console.log(`backend: ${exe}`);
+    logging.logEvent("backend.starting", "Backend resolved", { executable: exe });
 
     const env = ambienteBackend(pathsResolvidos);
 
     backendSupervisor.onCrash = (crashInfo) => {
+      logging.logEvent("backend.crashed", "Backend process crashed", crashInfo);
       dialog.showErrorBox(
         "ProspectOS",
         "O motor do ProspectOS parou de responder. O aplicativo será fechado."
@@ -161,12 +171,15 @@ async function iniciar() {
     });
 
     const port = new URL(backendUrl).port;
+    logging.logEvent("backend.ready", "Backend ready via health endpoint", { port });
     criarJanela(port);
     configurarAutoUpdate();
+    logging.logEvent("app.ready", "Application window opened", { port });
   } catch (erro) {
     const logPath = PROSPECTOS_LOG_DIR
       ? path.join(PROSPECTOS_LOG_DIR, "prospeccao.log")
       : "logs/prospeccao.log";
+    logging.logError("app.startup-failed", erro.message, { logPath });
     dialog.showErrorBox(
       "ProspectOS não conseguiu iniciar",
       `${erro.message}\n\nVeja os logs em: ${logPath}`
@@ -179,7 +192,9 @@ async function limparBackend() {
   if (limpando) return limpando;
   limpando = (async () => {
     backendEncerradoDeProposito = true;
+    logging.logEvent("backend.stopping", "Shutting down backend");
     await backendSupervisor.stop({ reason: TerminationReason.APP_QUIT });
+    logging.logEvent("backend.stopped", "Backend stopped");
   })();
   return limpando;
 }
@@ -216,9 +231,11 @@ app.on("before-quit", async (event) => {
 app.on("will-quit", () => {
   if (!backendSupervisor.pid) return;
   backendEncerradoDeProposito = true;
+  logging.logEvent("backend.stopping", "Force-stopping backend during quit");
   try {
     backendSupervisor.forceStop({ reason: TerminationReason.APP_QUIT });
   } catch { }
+  logging.close();
 });
 
 app.whenReady().then(iniciar);

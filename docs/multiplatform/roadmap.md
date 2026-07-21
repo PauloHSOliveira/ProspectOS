@@ -1,6 +1,6 @@
 # Roadmap — ProspectOS Multiplataforma
 
-**Última atualização:** 2026-07-20
+**Última atualização:** 2026-07-21
 
 ## Escopo oficial
 
@@ -39,14 +39,14 @@ A iniciativa multiplataforma tem como objetivo:
 
 | ID | Prioridade | Status | Objetivo | Dependências | Aceite | Risco | Plataforma |
 |---|---|---|---|---|---|---|---|
-| CORE-001 | P0 | **BLOQUEADO** | Dependências Python reproduzíveis | Nenhuma | `pip install -r requirements.txt` exit 0, `pip check` OK | Baixo | todas |
+| CORE-001 | P0 | **COMPLETO** | Dependências Python reproduzíveis | Nenhuma | `pip install -r requirements.txt` exit 0, `pip check` OK | Baixo | todas |
 | CORE-002 | P0 | **COMPLETO** | PlatformPaths (paths por plataforma) | Nenhuma | Env vars `PROSPECTOS_*` funcionam, tests passam | Baixo | todas |
 | CORE-003 | P0 | **COMPLETO** | RuntimeManifest compartilhado | CORE-002 | Electron + backend resolvem binários via mesmo JSON | Baixo | todas |
 | CORE-004 | P0 | **COMPLETO** | PlaywrightRuntimeManager | CORE-003 | Install, validate, repair, remove, 160+ tests | Médio | darwin-arm64 |
 | CORE-005 | P0 | **COMPLETO** | Scraper arm64 nativo | Nenhuma | Binário Mach-O arm64, tag fixa v1.16.3 | Baixo | darwin-arm64 |
 | CORE-006 | P0 | **COMPLETO** | Integração scraper + runtime | CORE-004, CORE-005 | Scraper executa com runtime controlado, stderr parse | Médio | darwin-arm64 |
 
-**CORE-001 validado em 2026-07-20:** `pip install` falha com `ResolutionImpossible`. Commit `42c9040` (que corrigia `requests==2.32.3` → `2.34.2`) não está no HEAD atual — foi revertido. `MAC-001` e `MAC-002` são `PARCIAL` porque seus artefatos existem mas não são reproduzíveis a partir do HEAD.
+**CORE-001 validado em 2026-07-21:** `pip install -r requirements.txt && pip check` executa com sucesso. A versão `requests==2.34.2` no `requirements.txt` atual resolve corretamente. `MAC-001` e `MAC-002` são `PARCIAL` porque seus artefatos existem mas não são reproduzíveis a partir do HEAD (ver nota abaixo).
 
 ---
 
@@ -56,6 +56,8 @@ A iniciativa multiplataforma tem como objetivo:
 |---|---|---|---|---|---|---|---|
 | MAC-001 | P0 | **PARCIAL** | Backend PyInstaller arm64 | CORE-001 | Build reproduzível a partir do HEAD | Médio | darwin-arm64 |
 | MAC-002 | P0 | **PARCIAL** | Electron `.app` arm64 | MAC-001, CORE-005 | `.app` produzido com backend + scraper arm64 | Médio | darwin-arm64 |
+
+**Nota MAC-001/MAC-002:** Artefatos existem em `backend/dist/ProspectOS` e `dist/ProspectOS` (HEAD `3ffb81e`), mas `MAC-001` e `MAC-002` permanecem **PARCIAL** porque o build não foi reexecutado e validado a partir do HEAD atual. O histórico de build pode conter diferenças no manifesto ou nos binários embarcados.
 | MAC-003 | P0 | **PENDENTE** | Smoke completo do `.app` | MAC-002, CORE-001 | Checklist local executado em Mac M4 | Alto | darwin-arm64 |
 | MAC-004 | P1 | **PENDENTE** | Keychain macOS no bundle | MAC-002 | `keyring` salva/lê via Keychain no `.app` local | Médio | darwin-arm64 |
 | MAC-005 | P1 | **PARCIAL** | Lifecycle macOS | MAC-002 | Código existe, smoke pendente | Baixo | darwin-arm64 |
@@ -84,13 +86,13 @@ Mudanças em paths, manifests e resolução de sidecars podem afetar o produto e
 
 Para uso estritamente local, ROB-001 é recomendado mas não precisa bloquear o primeiro smoke funcional.
 
-| ID | Prioridade | Status | Objetivo | Dependências | Aceite | Risco | Plataforma |
-|---|---|---|---|---|---|---|---|
-| ROB-001 | P1 | **PENDENTE** | Supervisor de processos | CORE-006 | Backend e scraper encerram e recuperam corretamente | Alto | todas |
-| ROB-002 | P1 | **PENDENTE** | Health endpoint | CORE-002 | Estado do backend e subsistemas disponível localmente | Baixo | todas |
-| ROB-003 | P2 | **PENDENTE** | Jobs persistentes | CORE-006 | Jobs podem ser recuperados após restart | Médio | todas |
-| ROB-004 | P2 | **PENDENTE** | Logs estruturados | CORE-002 | Eventos correlacionados entre Electron, backend e scraper | Baixo | todas |
-| ROB-005 | P2 | **PENDENTE** | Diagnóstico exportável | CORE-004 | ZIP de diagnóstico sem dados sensíveis | Baixo | todas |
+| ID | Prioridade | Status | Objetivo | Dependências | Aceite | Risco | Plataforma | Evidência |
+|---|---|---|---|---|---|---|---|---|---|
+| ROB-001 | P1 | **COMPLETO** | Supervisor de processos | CORE-006 | Backend e scraper encerram e recuperam corretamente | Alto | todas | Commit `cf62776` (PR #11). `backend/scraper_process_supervisor.py` e `desktop/backend-process-supervisor.js` implementados. `ScraperProcessSupervisor` com state machine, diagnostics, processo em grupo. `test_scraper_process_supervisor.py` com 300+ testes. |
+| ROB-002 | P1 | **COMPLETO** | Health endpoint | CORE-002 | Estado do backend e subsistemas disponível localmente | Baixo | todas | Commit deste PR (HEAD). `backend/health.py` + `rotas_health.py`. Endpoint `GET /api/health`. 7 checks (database, filesystem, manifest, playwright, scraper, jobs, keychain). 200 para ok/degraded, 503 para unhealthy/starting. 0 side effects. `test_health.py` com 20+ testes. Electron usa `/api/health` para readiness. |
+| ROB-003 | P2 | **PENDENTE** | Jobs persistentes | CORE-006 | Jobs podem ser recuperados após restart | Médio | todas | Código não existe além de `marcar_jobs_interrompidos()`. |
+| ROB-004 | P2 | **COMPLETO** | Logs estruturados | CORE-002 | Eventos correlacionados entre Electron, backend e scraper | Baixo | todas | Commit deste PR (HEAD). `backend/logging_config.py` com `StructuredFormatter`, `CorrelationIdFilter`, correlação via `correlation_id`. `desktop/logging.js` com escrita persistente. Eventos canônicos nos fluxos críticos. Rotação existente (RotatingFileHandler 2MB/3 backups). |
+| ROB-005 | P2 | **COMPLETO** | Diagnóstico exportável | CORE-004 | ZIP de diagnóstico sem dados sensíveis | Baixo | todas | Commit deste PR (HEAD). `backend/diagnostics.py` com `collect_diagnostics()`, `export_diagnostics_zip()`, sanitização. `backend/tools/diagnostics_cli.py` com `inspect` e `export`. `test_diagnostics.py` com 15+ testes. ZIP: diagnostics.json, health.json, logs truncados (5MB/arquivo, 20MB total). Secrets e banco excluídos. |
 
 ---
 
@@ -161,7 +163,7 @@ Esses itens não devem:
 - [ ] `.app` abre no Mac de desenvolvimento
 - [ ] Backend inicia
 - [ ] Frontend carrega
-- [ ] Readiness identifica a porta correta
+- [ ] Readiness identifica a porta correta (via `/api/health`)
 - [ ] Nenhum arquivo é gravado dentro do `.app`
 - [ ] Erro de startup é apresentado de forma clara
 
@@ -260,10 +262,10 @@ build local reproduzível
 ## Melhorias além da portabilidade
 
 ### Necessário antes de release público (futuro)
-- Supervisor de processos: sem ele, subprocessos órfãos em crash são risco
-- Health endpoint: diagnósticos e auto-recuperação
-- Logs estruturados: correlação de erros entre componentes
-- Diagnóstico exportável: resolve suporte
+- Supervisor de processos: implementado (ROB-001 COMPLETO)
+- Health endpoint: implementado (ROB-002 COMPLETO)
+- Logs estruturados: implementado (ROB-004 COMPLETO)
+- Diagnóstico exportável: implementado (ROB-005 COMPLETO)
 
 ### Recomendado depois de release
 - E2E Electron (Spectron ou Playwright para Electron)

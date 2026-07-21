@@ -476,6 +476,7 @@ class BackendProcessSupervisor {
   _startHttpReadiness(port) {
     const url = `http://127.0.0.1:${port}`;
     this._backendUrl = url;
+    const healthUrl = `http://127.0.0.1:${port}/api/health`;
     const deadline = Date.now() + HTTP_READINESS_TIMEOUT_MS;
 
     this._httpReadinessInterval = setInterval(async () => {
@@ -497,16 +498,30 @@ class BackendProcessSupervisor {
       }
 
       try {
-        const resp = await this._httpGet(`${url}/`);
-        if (resp.status >= 200 && resp.status < 400) {
-          this._cancelHttpReadiness();
-          this._readyAt = new Date().toISOString();
-          this._transitionTo(State.READY);
-          this._log("readiness confirmed", { url });
-          if (this._resolveReadiness) {
-            this._resolveReadiness(url);
-            this._resolveReadiness = null;
-            this._rejectReadiness = null;
+        const resp = await this._httpGet(healthUrl);
+        if (resp.status >= 200 && resp.status < 500) {
+          let body;
+          try {
+            body = JSON.parse(resp.body);
+          } catch {
+            body = null;
+          }
+          const serviceOk = body && body.service === "prospectos-backend";
+          const statusOk = body && (body.status === "ok" || body.status === "degraded");
+          if (serviceOk && statusOk) {
+            this._cancelHttpReadiness();
+            this._readyAt = new Date().toISOString();
+            this._transitionTo(State.READY);
+            this._log("readiness confirmed via health endpoint", { url: healthUrl, status: body.status });
+            if (this._resolveReadiness) {
+              this._resolveReadiness(url);
+              this._resolveReadiness = null;
+              this._rejectReadiness = null;
+            }
+          } else if (body && body.status === "starting") {
+            this._log("backend still starting", { url: healthUrl });
+          } else if (body && body.status === "unhealthy") {
+            this._log("backend unhealthy during startup", { url: healthUrl, checks: body.checks });
           }
         }
       } catch {

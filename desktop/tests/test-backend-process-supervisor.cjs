@@ -43,7 +43,7 @@ function createIgnoringScript(scriptDir) {
 const http = require("http");
 const server = http.createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ status: "ok" }));
+  res.end(JSON.stringify({ status: "ok", service: "prospectos-backend" }));
 });
 process.on("SIGTERM", () => {});
 process.on("SIGINT", () => {});
@@ -63,7 +63,7 @@ const http = require("http");
 const fs = require("fs");
 const server = http.createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ status: "ok" }));
+  res.end(JSON.stringify({ status: "ok", service: "prospectos-backend" }));
 });
 setTimeout(() => {
   server.listen(0, "127.0.0.1", () => {

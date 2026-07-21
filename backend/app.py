@@ -31,6 +31,7 @@ from flask import Flask, abort, jsonify, send_from_directory
 from werkzeug.exceptions import HTTPException
 
 import paths
+import logging_config
 
 load_dotenv()
 
@@ -50,8 +51,10 @@ PASTA_LOGS.mkdir(parents=True, exist_ok=True)
 _handler_log = RotatingFileHandler(
     PASTA_LOGS / "prospeccao.log", maxBytes=2_000_000, backupCount=3, encoding="utf-8"
 )
-_handler_log.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+_handler_log.setFormatter(logging_config.StructuredFormatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
 logging.getLogger().addHandler(_handler_log)
+logging_config.configure_logging()
+logging_config.log_event("app.starting")
 # nível configurável via .env: PROSPECCAO_LOG_LEVEL=DEBUG|INFO|WARNING|ERROR
 _nivel_log = os.environ.get("PROSPECCAO_LOG_LEVEL", "INFO").upper()
 logging.getLogger().setLevel(getattr(logging, _nivel_log, logging.INFO))
@@ -62,6 +65,7 @@ import jobs
 import processar
 import rotas_analytics
 import rotas_config
+import rotas_health
 import rotas_instagram
 import rotas_leads
 
@@ -70,6 +74,7 @@ app.register_blueprint(rotas_leads.bp)
 app.register_blueprint(rotas_instagram.bp)
 app.register_blueprint(rotas_analytics.bp)
 app.register_blueprint(rotas_config.bp)
+app.register_blueprint(rotas_health.bp)
 
 
 @app.errorhandler(Exception)
@@ -162,6 +167,8 @@ if __name__ == "__main__":
             pass
         paths.caminho_dados("porta.txt", criar_pai=True).write_text(str(porta), encoding="utf-8")
         logger.info("servindo em http://127.0.0.1:%s", porta)
+        _rt = __import__("health", fromlist=["_runtime_target"])._runtime_target() if "health" in sys.modules else ""
+        logging_config.log_event("backend.ready", extra={"port": porta, "runtimeTarget": _rt})
 
         # empacotado não tem iniciar.bat: o próprio app abre a interface - exceto
         # quando quem subiu o backend foi o shell de desktop (Electron), que tem
