@@ -13,7 +13,7 @@
     "dist:mac:arm64": "CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --config electron-builder.yml --mac dir --arm64 --publish never",
     "dist:mac": "CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --config electron-builder.yml --mac dir --publish never",
     "publicar": "electron-builder --win --publish always",
-    "test": "node --test tests/test-runtime-target.cjs"
+    "test": "node --test tests/test-runtime-target.cjs tests/test-backend-process-supervisor.cjs"
   },
   "devDependencies": {
     "electron": "38.2.0",
