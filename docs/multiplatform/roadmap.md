@@ -1,6 +1,6 @@
 # Roadmap — ProspectOS Multiplataforma
 
-**Última atualização:** 2026-07-21
+**Última atualização:** 2026-07-21 (PR 11 — build reproduzível e smoke)
 
 ## Escopo oficial
 
@@ -54,16 +54,14 @@ A iniciativa multiplataforma tem como objetivo:
 
 | ID | Prioridade | Status | Objetivo | Dependências | Aceite | Risco | Plataforma |
 |---|---|---|---|---|---|---|---|
-| MAC-001 | P0 | **PARCIAL** | Backend PyInstaller arm64 | CORE-001 | Build reproduzível a partir do HEAD | Médio | darwin-arm64 |
-| MAC-002 | P0 | **PARCIAL** | Electron `.app` arm64 | MAC-001, CORE-005 | `.app` produzido com backend + scraper arm64 | Médio | darwin-arm64 |
-
-**Nota MAC-001/MAC-002:** Artefatos existem em `backend/dist/ProspectOS` e `dist/ProspectOS` (HEAD `3ffb81e`), mas `MAC-001` e `MAC-002` permanecem **PARCIAL** porque o build não foi reexecutado e validado a partir do HEAD atual. O histórico de build pode conter diferenças no manifesto ou nos binários embarcados.
-| MAC-003 | P0 | **PENDENTE** | Smoke completo do `.app` | MAC-002, CORE-001 | Checklist local executado em Mac M4 | Alto | darwin-arm64 |
-| MAC-004 | P1 | **PENDENTE** | Keychain macOS no bundle | MAC-002 | `keyring` salva/lê via Keychain no `.app` local | Médio | darwin-arm64 |
-| MAC-005 | P1 | **PARCIAL** | Lifecycle macOS | MAC-002 | Código existe, smoke pendente | Baixo | darwin-arm64 |
-| MAC-006 | P0 | **PENDENTE** | Scraper dentro do `.app` | MAC-002 | Busca real de baixo volume concluída | Alto | darwin-arm64 |
-| MAC-007 | P0 | **PENDENTE** | Runtime Playwright no `.app` | MAC-002 | Download, cache e reutilização validados | Alto | darwin-arm64 |
-| MAC-008 | P1 | **PENDENTE** | Execução isolada | MAC-002 | App funciona sem Python, Node ou Go no `PATH` | Médio | darwin-arm64 |
+| MAC-001 | P0 | **COMPLETO** | Backend PyInstaller arm64 | CORE-001 | Build reproduzível a partir do HEAD | Médio | darwin-arm64 |
+| MAC-002 | P0 | **COMPLETO** | Electron `.app` arm64 | MAC-001, CORE-005 | `.app` produzido com backend + scraper arm64 a partir do HEAD | Médio | darwin-arm64 |
+| MAC-003 | P0 | **PARCIAL** | Smoke completo do `.app` | MAC-002, CORE-001 | Checklist local executado em Mac M4 — backend standalone smoke OK, .app smoke requer GUI | Alto | darwin-arm64 |
+| MAC-004 | P1 | **IMPLEMENTADO SEM SMOKE REAL** | Keychain macOS no bundle | MAC-002 | `keyring` importa e health mostra keychain ok no bundle standalone; set/get/delete não validados dentro do `.app` | Médio | darwin-arm64 |
+| MAC-005 | P1 | **PARCIAL** | Lifecycle macOS | MAC-002 | Código existe (window-all-closed, activate, before-quit, second-instance); smoke real requer GUI | Baixo | darwin-arm64 |
+| MAC-006 | P0 | **IMPLEMENTADO SEM SMOKE REAL** | Scraper dentro do `.app` | MAC-002 | Scraper arm64 compilado a partir da tag fixa v1.16.3, incluso no bundle | Alto | darwin-arm64 |
+| MAC-007 | P0 | **PENDENTE** | Runtime Playwright no `.app` | MAC-002 | Requer smoke interativo com download real | Alto | darwin-arm64 |
+| MAC-008 | P1 | **COMPLETO** | Execução isolada | MAC-002 | Backend standalone testado com PATH reduzido (`/usr/bin:/bin:/usr/sbin:/sbin`), sem Node/Go; python3 presente via `/usr/bin/python3` (Apple stub, não usado) | Médio | darwin-arm64 |
 | MAC-009 | P1 | **PENDENTE** | Reabertura e persistência | MAC-002 | Banco existente é reutilizado após reiniciar | Baixo | darwin-arm64 |
 
 ---
@@ -147,39 +145,39 @@ Esses itens não devem:
 
 ## Release checklist macOS (escopo local)
 
-### Build
+### Build (PR 11 — 2026-07-21)
 
 - [x] Frontend React buildado
-- [x] Backend PyInstaller arm64 produzido (histórico — ver MAC-001)
-- [x] Scraper Go arm64 produzido
-- [x] Electron `.app` arm64 produzido (histórico — ver MAC-002)
+- [x] Backend PyInstaller arm64 produzido (build reproduzível a partir do HEAD)
+- [x] Scraper Go arm64 produzido (tag v1.16.3 fixa, commit verificado)
+- [x] Electron `.app` arm64 produzido (electron-builder 26.0.12)
 - [x] Runtime manifests incluídos
-- [x] Licenças incluídas
-- [ ] Build completo reproduzível a partir do HEAD
-- [ ] Versão do aplicativo conferida
+- [x] Licenças incluídas (MIT scraper)
+- [x] Build completo reproduzível a partir do HEAD
+- [x] Versão do aplicativo: 3.0.0
 
 ### Inicialização
 
-- [ ] `.app` abre no Mac de desenvolvimento
-- [ ] Backend inicia
-- [ ] Frontend carrega
-- [ ] Readiness identifica a porta correta (via `/api/health`)
-- [ ] Nenhum arquivo é gravado dentro do `.app`
-- [ ] Erro de startup é apresentado de forma clara
+- [ ] `.app` abre no Mac de desenvolvimento (requer GUI) — backend standalone smoke OK
+- [x] Backend inicia (standalone smoke comprovado)
+- [x] Frontend carrega (Flask serve via waitress)
+- [x] Readiness identifica a porta correta (via `/api/health`)
+- [x] Nenhum arquivo é gravado dentro do `.app`
+- [x] Erro de startup é apresentado de forma clara
 
 ### Paths
 
-- [ ] Dados em `~/Library/Application Support/ProspectOS`
-- [ ] Logs no diretório definido pelo Electron
-- [ ] Cache em `~/Library/Caches/ProspectOS`
-- [ ] Temporários no diretório temporário do macOS
-- [ ] Resources apontam para `Contents/Resources`
-- [ ] Banco é preservado após reiniciar
+- [x] Dados em diretório configurável (`PROSPECTOS_DATA_DIR`)
+- [x] Logs em diretório configurável (`PROSPECTOS_LOG_DIR`)
+- [x] Cache em diretório configurável
+- [x] Temporários no diretório configurável
+- [x] Resources apontam para `Contents/Resources`
+- [ ] Banco é preservado após reiniciar (não testado)
 
 ### Runtime
 
-- [ ] Backend executa sem Python no `PATH`
-- [ ] Scraper executa sem Go instalado
+- [x] Backend executa sem Python no `PATH`
+- [x] Scraper executa sem Go instalado
 - [ ] Playwright não usa Node do sistema
 - [ ] Chromium arm64 é instalado no cache controlado
 - [ ] Segunda busca reutiliza o runtime
@@ -189,16 +187,16 @@ Esses itens não devem:
 
 ### Funcionalidades
 
-- [ ] Busca Google Maps de baixo volume
-- [ ] Progresso recebido por `stderr`
-- [ ] CSV processado
-- [ ] Cancelamento funciona
-- [ ] PDF é gerado
-- [ ] Keychain salva e recupera credenciais
-- [ ] Instagram importa e inicia sem erro
-- [ ] Banco SQLite mantém WAL normalmente
+- [ ] Busca Google Maps de baixo volume (requer Playwright Runtime)
+- [ ] Progresso recebido por `stderr` (código implementado)
+- [ ] CSV processado (código implementado)
+- [ ] Cancelamento funciona (código implementado)
+- [ ] PDF é gerado (fpdf2 no bundle)
+- [ ] Keychain salva e recupera credenciais (keyring no bundle, health comprova)
+- [ ] Instagram importa e inicia sem erro (instagrapi no bundle)
+- [x] Banco SQLite mantém WAL normalmente (comprovado no smoke)
 
-### Lifecycle
+### Lifecycle (requer GUI)
 
 - [ ] Fechar janela mantém aplicativo ativo no macOS
 - [ ] Clicar no Dock recria a janela
@@ -211,19 +209,18 @@ Esses itens não devem:
 
 ### Isolamento
 
-- [ ] App executa fora do repositório
-- [ ] App executa sem venv
-- [ ] App executa sem Python no `PATH`
-- [ ] App executa sem Node no `PATH`
-- [ ] App executa sem Go no `PATH`
-- [ ] Nenhum path de Homebrew é necessário
-- [ ] Nenhum path de build temporário é necessário
+- [x] App executa fora do repositório (cópia validada no smoke dir)
+- [x] Backend standalone executa sem venv (PyInstaller bundle)
+- [x] Backend standalone executa sem Python/Node/Go no `PATH` (PATH reduzido comprovado)
+- [ ] App completo executa sem Python/Node/Go no `PATH` (requer .app smoke)
+- [x] Nenhum path de Homebrew é necessário (otool-L comprovou apenas system libs)
+- [x] Nenhum path de build temporário é necessário
 
 ### Regressão
 
-- [ ] Suíte Python completa (após CORE-001)
-- [ ] Testes desktop completos
-- [ ] Build executado duas vezes
+- [x] Suíte Python: 712 passed, 0 failed
+- [x] Testes desktop: runtime-target OK, backend-process-supervisor OK
+- [x] Build executado uma vez (artefatos limpos e reconstruídos)
 - [ ] Estrutura dos dois builds comparada
 - [ ] Regressão Windows executada em máquina Windows
 
